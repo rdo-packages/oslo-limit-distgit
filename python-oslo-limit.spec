@@ -12,8 +12,8 @@ calculation. It aims to provide support for quota \
 enforcement across all OpenStack services.
 
 Name:           python-%{pkg_name}
-Version:        1.4.0
-Release:        1%{?dist}
+Version:        XXX
+Release:        XXX
 Summary:        Limit enforcement library to assist with quota calculation
 
 License:        ASL 2.0
@@ -115,6 +115,3 @@ stestr run
 %endif
 
 %changelog
-* Thu Sep 09 2021 RDO <dev@lists.rdoproject.org> 1.4.0-1
-- Update to 1.4.0
-
