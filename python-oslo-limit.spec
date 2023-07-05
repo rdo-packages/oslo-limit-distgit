@@ -5,6 +5,12 @@
 %global with_doc 1
 
 %{!?upstream_version: %global upstream_version %{version}%{?milestone}}
+# we are excluding some BRs from automatic generator
+%global excluded_brs doc8 bandit pre-commit hacking flake8-import-order
+# Exclude sphinx from BRs if docs are disabled
+%if ! 0%{?with_doc}
+%global excluded_brs %{excluded_brs} sphinx openstackdocstheme
+%endif
 
 %global common_desc \
 Oslo.limit is the limit enforcement library to assist with quota \
@@ -16,7 +22,7 @@ Version:        XXX
 Release:        XXX
 Summary:        Limit enforcement library to assist with quota calculation
 
-License:        ASL 2.0
+License:        Apache-2.0
 URL:            https://docs.openstack.org/oslo.limit/latest/
 Source0:        https://tarballs.openstack.org/%{pypi_name}/%{pypi_name}-%{version}.tar.gz
 # Required for tarball sources verification
@@ -39,25 +45,9 @@ BuildRequires: git
 
 %package -n     python3-%{pkg_name}
 Summary:        %{summary}
-%{?python_provide:%python_provide python3-%{pkg_name}}
 
 BuildRequires:  python3-devel
-BuildRequires:  python3-setuptools
-BuildRequires:  python3-pbr
-BuildRequires:  python3-fixtures
-BuildRequires:  python3-keystoneauth1 >= 3.9.0
-BuildRequires:  python3-openstacksdk >= 0.31.1
-BuildRequires:  python3-oslo-config >= 5.2.0
-BuildRequires:  python3-oslo-i18n >= 3.15.3
-BuildRequires:  python3-oslo-log >= 3.44.0
-BuildRequires:  python3-oslotest >= 3.2.0
-BuildRequires:  python3-stestr
-
-Requires:       python3-keystoneauth1 >= 3.9.0
-Requires:       python3-openstacksdk >= 0.31.1
-Requires:       python3-oslo-config >= 5.2.0
-Requires:       python3-oslo-i18n >= 3.15.3
-Requires:       python3-oslo-log >= 3.44.0
+BuildRequires:  pyproject-rpm-macros
 
 %description -n python3-%{pkg_name}
 %{common_desc}
@@ -65,10 +55,6 @@ Requires:       python3-oslo-log >= 3.44.0
 %if 0%{?with_doc}
 %package -n python-%{pkg_name}-doc
 Summary:        oslo.limit documentation
-
-BuildRequires:  python3-sphinx
-BuildRequires:  python3-openstackdocstheme
-BuildRequires:  python3-sphinxcontrib-apidoc
 
 %description -n python-%{pkg_name}-doc
 Documentation for oslo.limit library.
@@ -80,33 +66,52 @@ Documentation for oslo.limit library.
 %{gpgverify}  --keyring=%{SOURCE102} --signature=%{SOURCE101} --data=%{SOURCE0}
 %endif
 %autosetup -n %{pypi_name}-%{upstream_version} -S git
-# Let RPM handle the requirements
-rm -f {test-,}requirements.txt
 
-# Remove bundled egg-info
-rm -rf %{pypi_name}.egg-info
+
+sed -i /^[[:space:]]*-c{env:.*_CONSTRAINTS_FILE.*/d tox.ini
+sed -i "s/^deps = -c{env:.*_CONSTRAINTS_FILE.*/deps =/" tox.ini
+sed -i /^minversion.*/d tox.ini
+sed -i /^requires.*virtualenv.*/d tox.ini
+
+# Exclude some bad-known BRs
+for pkg in %{excluded_brs}; do
+  for reqfile in doc/requirements.txt test-requirements.txt; do
+    if [ -f $reqfile ]; then
+      sed -i /^${pkg}.*/d $reqfile
+    fi
+  done
+done
+
+# Automatic BR generation
+%generate_buildrequires
+%if 0%{?with_doc}
+  %pyproject_buildrequires -t -e %{default_toxenv},docs
+%else
+  %pyproject_buildrequires -t -e %{default_toxenv}
+%endif
 
 %build
-%py3_build
+%pyproject_wheel
+
+%install
+%pyproject_install
 
 %if 0%{?with_doc}
 # generate html docs
-PYTHONPATH=${PWD} sphinx-build -b html doc/source doc/build/html
+PYTHONPATH="%{buildroot}/%{python3_sitelib}"
+%tox -e docs
 # remove the sphinx-build leftovers
 rm -rf doc/build/html/.{doctrees,buildinfo}
 %endif
 
-%install
-%py3_install
-
 %check
-stestr run
+%tox -e %{default_toxenv}
 
 %files -n python3-%{pkg_name}
 %license LICENSE
 %doc README.rst
 %{python3_sitelib}/oslo_limit
-%{python3_sitelib}/*.egg-info
+%{python3_sitelib}/*.dist-info
 
 %if 0%{?with_doc}
 %files -n python-%{pkg_name}-doc
