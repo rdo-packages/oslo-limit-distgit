@@ -1,5 +1,5 @@
 %{!?sources_gpg: %{!?dlrn:%global sources_gpg 1}}
-%global sources_gpg_sign 0x4c29ff0e437f3351fd82bdf47c5a3bc787dc7035
+%global sources_gpg_sign 0x815AFEC729392386480E076DCC0DFE2D21C023C9
 %global pypi_name oslo.limit
 %global pkg_name oslo-limit
 %global with_doc 1
@@ -18,8 +18,8 @@ calculation. It aims to provide support for quota \
 enforcement across all OpenStack services.
 
 Name:           python-%{pkg_name}
-Version:        XXX
-Release:        XXX
+Version:        2.2.0
+Release:        1%{?dist}
 Summary:        Limit enforcement library to assist with quota calculation
 
 License:        Apache-2.0
@@ -120,3 +120,6 @@ rm -rf doc/build/html/.{doctrees,buildinfo}
 %endif
 
 %changelog
+* Fri Sep 01 2023 RDO <dev@lists.rdoproject.org> 2.2.0-1
+- Update to 2.2.0
+
